@@ -1,0 +1,18 @@
+# Build output and test artifacts (including workspace packages).
+dist/
+build/
+coverage/
+.nitro/
+.output/
+
+# Local environment and runtime data.
+.env
+.env.*
+!.env.example
+/examples/vite-nitro/data/
+
+# Generated dependency metadata and installed agent skills.
+pnpm-lock.yaml
+skills-lock.json
+/.agents/skills/
+/.claude/skills/

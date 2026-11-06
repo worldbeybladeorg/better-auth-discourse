@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DiscourseConnect playground</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Better Auth · Vite · Nitro v3</p>
+        <h1>DiscourseConnect playground</h1>
+        <p>
+          A local DiscourseConnect consumer. Authenticate with your Discourse
+          identity provider, then inspect the local user and linked accounts.
+        </p>
+      </header>
+
+      <p id="status" role="status" aria-live="polite">Loading…</p>
+
+      <section aria-labelledby="discourse-heading">
+        <h2 id="discourse-heading">Discourse identity</h2>
+        <div class="actions">
+          <button id="discourse-sign-in" type="button">
+            Sign in with Discourse
+          </button>
+          <button id="discourse-link" type="button" disabled>
+            Link Discourse to this local user
+          </button>
+        </div>
+        <p id="linking-policy">Loading account-linking policy…</p>
+        <p>
+          Discourse email is not treated as verified. Linking requires a local
+          session and an explicit server-side trust policy.
+        </p>
+      </section>
+
+      <section aria-labelledby="local-heading">
+        <h2 id="local-heading">Local test account</h2>
+        <p>
+          Optional: create a local account first to exercise explicit linking.
+          Use the same email as your Discourse identity. Use throwaway
+          credentials, not your Discourse password.
+        </p>
+        <form id="credentials">
+          <label
+            >Name (for sign-up)<input name="name" autocomplete="name"
+          /></label>
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+          /></label>
+          <label
+            >Password<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              minlength="8"
+              required
+          /></label>
+          <div class="actions">
+            <button type="submit" name="action" value="sign-in">
+              Sign in locally
+            </button>
+            <button type="submit" name="action" value="sign-up">
+              Create local account
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section aria-labelledby="session-heading">
+        <h2 id="session-heading">Local session</h2>
+        <div class="actions">
+          <button id="refresh" type="button">Refresh</button>
+          <button id="sign-out" type="button" disabled>Sign out locally</button>
+        </div>
+        <p>
+          Local sign-out does not sign you out of Discourse. Session tokens are
+          omitted from this display.
+        </p>
+        <pre id="session">null</pre>
+        <h3>Linked accounts</h3>
+        <pre id="accounts">[]</pre>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

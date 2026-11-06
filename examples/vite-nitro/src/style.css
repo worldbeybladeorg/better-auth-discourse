@@ -1,0 +1,95 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #e8edf5;
+  background: #111827;
+  line-height: 1.6;
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+}
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+.eyebrow {
+  color: #93c5fd;
+  font-weight: 600;
+}
+section {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+section p {
+  color: #cbd5e1;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  background: #93c5fd;
+  color: #111827;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+label {
+  display: block;
+  margin-top: 1rem;
+}
+input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0.35rem;
+  font: inherit;
+  padding: 0.6rem;
+  border: 1px solid #64748b;
+  border-radius: 6px;
+  background: #111827;
+  color: inherit;
+}
+pre {
+  overflow: auto;
+  background: #111827;
+  border-radius: 6px;
+  padding: 1rem;
+  font-size: 0.85rem;
+}
+#status {
+  padding: 1rem;
+  border-left: 4px solid #93c5fd;
+  background: #1f2937;
+  overflow-wrap: anywhere;
+}
+#status[data-error="true"] {
+  border-color: #f87171;
+  color: #fecaca;
+}

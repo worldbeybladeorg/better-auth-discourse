@@ -11,6 +11,7 @@ skill creates them lazily when terms or decisions are resolved.
 ## Layout
 
 Single-context:
+
 - `GLOSSARY.md`: shared domain vocabulary.
 - `docs/adr/`: architectural decision records.
 

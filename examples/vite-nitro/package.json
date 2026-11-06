@@ -1,0 +1,26 @@
+{
+  "name": "discourse-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env node_modules/vite/bin/vite.js",
+    "build": "vite build",
+    "start": "node --env-file=.env .output/server/index.mjs",
+    "db:migrate": "node --env-file=.env scripts/migrate.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && node --test test/server.test.mjs"
+  },
+  "dependencies": {
+    "better-auth": "1.7.18",
+    "better-auth-discourse": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "nitro": "3.0.261103-rc",
+    "typescript": "^7.0.2",
+    "vite": "8.3.6"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

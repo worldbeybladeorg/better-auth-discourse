@@ -1,21 +1,63 @@
 {
   "name": "better-auth-discourse",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "12.16.1",
-      "onFail": "download"
+  "version": "0.1.0",
+  "description": "DiscourseConnect authentication plugin for Better Auth",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./storage/sqlite": {
+      "types": "./dist/storage/sqlite.d.ts",
+      "import": "./dist/storage/sqlite.js"
     }
   },
-  "packageManager": "pnpm@12.16.1",
-  "type": "module"
+  "scripts": {
+    "build": "tsdown",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "example:dev": "pnpm build && pnpm --dir examples/vite-nitro dev",
+    "example:migrate": "pnpm build && pnpm --dir examples/vite-nitro db:migrate",
+    "example:build": "pnpm build && pnpm --dir examples/vite-nitro build",
+    "validate:package": "pnpm build && node scripts/validate-package.mjs"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "better-auth": "1.7.18"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.10.0",
+    "better-auth": "1.7.18",
+    "better-sqlite3": "^12.4.1",
+    "esbuild": "^0.25.12",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "3.9.10",
+    "tsdown": "^0.23.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.16.1"
 }

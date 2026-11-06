@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "better-auth-discourse": ["./src/index.ts"],
+      "better-auth-discourse/client": ["./src/client.ts"],
+      "better-auth-discourse/storage/sqlite": ["./src/storage/sqlite.ts"]
+    },
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "examples/server.ts",
+    "examples/client.ts",
+    "vitest.config.ts",
+    "tsdown.config.ts"
+  ]
+}

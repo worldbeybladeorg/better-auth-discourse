@@ -90,11 +90,11 @@ Implement independently of user/session management:
 
 Proposed endpoints:
 
-| Endpoint | Responsibility |
-| --- | --- |
-| `POST /sign-in/discourse` | Validate destinations, create transaction state, and return the Discourse authorization URL |
+| Endpoint                  | Responsibility                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `POST /sign-in/discourse` | Validate destinations, create transaction state, and return the Discourse authorization URL      |
 | `GET /discourse/callback` | Verify response and state, resolve identity, establish a local session for sign-in, and redirect |
-| `POST /discourse/link` | Start explicit linking from an authenticated local session |
+| `POST /discourse/link`    | Start explicit linking from an authenticated local session                                       |
 
 Flow:
 
