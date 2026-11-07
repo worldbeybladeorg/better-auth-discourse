@@ -8,6 +8,8 @@ and Node.js's built-in persistent SQLite. The browser UI exercises:
 - Local session inspection, linked-account inspection, and local sign-out.
 - Optional email/password accounts and explicit Discourse identity linking.
 - Callback errors, displayed when Discourse returns to the playground.
+- A saved Discourse profile snapshot, including groups, staff flags, background
+  URLs, and provider 2FA metadata.
 
 This is a development playground, not a production application. No email
 verification or password-reset delivery is configured. Use throwaway accounts.
@@ -55,7 +57,12 @@ In Discourse's admin site settings:
 2. Add an entry to **discourse connect provider secrets** whose domain pattern
    matches the consumer's return host (`localhost` for this setup), with the
    same secret as `DISCOURSE_CONNECT_SECRET`. Avoid wildcard domain patterns.
-3. The exact return URL sent by this example is
+3. In **discourse connect provider claims**, include `groups`, `admin`,
+   `moderator`, `profile_background_url`, and `card_background_url` if you want
+   to inspect them. Preserve `email` and any existing claims needed for sign-in.
+   Background URLs require corresponding uploaded images. 2FA flags depend on
+   the provider authentication flow; the playground does not request `require_2fa`.
+4. The exact return URL sent by this example is
    `http://localhost:3000/api/auth/discourse/callback`.
 
 See the [official provider guide](https://meta.discourse.org/t/discourseconnect-provider-guide/32974).
@@ -78,6 +85,36 @@ checks globally. Restart after changing `.env`.
 
 Local sign-out does not sign you out of Discourse; a repeat sign-in may return
 immediately if your Discourse session is still active.
+
+### Inspect provider fields
+
+The **Discourse provider profile** panel shows the profile captured by
+`mapProfileToUser`, plus a `capturedAt` timestamp. It includes `groups`, `admin`,
+`moderator`, `profileBackgroundURL`, `cardBackgroundURL`, `confirmed2FA`, and
+`no2FAMethods`. Missing claims display as **Not provided**, distinct from `false`
+or an empty group list. URLs are text only; the browser does not load remote
+background images.
+
+The playground explicitly stores this display-only snapshot in a JSON
+`discourseProfile` user field. Re-run `pnpm example:migrate` after updating an
+existing playground, then sign in or link with Discourse to populate it. No
+existing database or `.env` is modified automatically. The snapshot is returned
+only with the signed-in user's session, not the public `/api/playground` config.
+Client sign-up/update requests cannot set it.
+
+Unlike the plugin's defaults, this example opts into
+`overrideUserInfoOnSignIn: true` and `account.accountLinking.updateUserInfoOnLink: true`
+to refresh the snapshot on returning sign-ins and explicit links. This also
+updates the local display name/avatar, but never the local email or its
+verification state during linking. Each successful profile update replaces the
+whole snapshot; omitted claims do not retain old assertions. **Refresh** only
+reads the saved session; it does not fetch new Discourse data.
+
+These snapshots can become stale and are not used for local permissions or MFA
+assurance. Do not treat provider staff flags as local roles or provider 2FA
+metadata as proof of local MFA. Local sign-out removes the panel's contents but
+does not delete the saved snapshot from SQLite. Use throwaway provider data and
+do not share screenshots containing profile details.
 
 ### Explicit account linking
 

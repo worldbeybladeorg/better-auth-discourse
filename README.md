@@ -90,6 +90,47 @@ sign-ups are allowed by default (`disableSignUp: false`); the server-only
 fields your application intends to store, and enable profile overwrites only
 after reviewing those fields.
 
+### Available profile data
+
+`mapProfileToUser` receives `id`, `email`, `name`, `image`, `username`, `bio`,
+`location`, `title`, `website`, `groups`, `admin`, `moderator`,
+`profileBackgroundURL`, `cardBackgroundURL`, `confirmed2FA`, and
+`no2FAMethods`. Only `id`, `email`, and the resolved display `name` are required;
+the remaining fields are optional. Discourse only sends role/group and
+background claims when configured to do so, and 2FA claims depend on the
+provider's authentication flow. Standard DiscourseConnect does not necessarily
+send bio, location, title, or website. A missing claim remains `undefined`;
+`groups: ""` is normalized to `[]`, otherwise groups are comma-split without
+changing case or spelling.
+
+The seven newly exposed fields are not automatically stored or used to grant
+local privileges. They are available to the mapping callback, and recognized
+wire claims also accompany the provider profile passed to Better Auth. Existing
+name/avatar mapping is unchanged. For example, map trusted provider groups to
+an application-owned field using an explicit allowlist, preserving absence:
+
+```ts
+mapProfileToUser: (profile) => ({
+  ...(profile.groups !== undefined
+    ? {
+        forumGroups: profile.groups.filter((group) =>
+          ["Staff", "Trust Level 2"].includes(group),
+        ),
+      }
+    : {}),
+}),
+```
+
+Define `forumGroups` as an application additional user field if it should be
+persisted. Existing users are updated only when `overrideUserInfoOnSignIn` is
+enabled. Provider claims are snapshots, not continuous synchronization:
+absent claims do not revoke existing values, and changes take effect only when
+the application explicitly refreshes/maps them. Plan revocation and refresh
+behavior in the consuming application. The 2FA fields are metadata from this
+provider exchange, not local MFA assurance; this plugin does not request
+`require_2fa` or mark the local session MFA-authenticated. No migration is
+needed unless the consuming application elects to add its own storage fields.
+
 ## Client setup
 
 ```ts

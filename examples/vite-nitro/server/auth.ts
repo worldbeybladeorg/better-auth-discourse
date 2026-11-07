@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { discourse } from "better-auth-discourse";
 
 function required(name: string): string {
@@ -39,10 +40,30 @@ export const auth = betterAuth({
   // Local credentials let you create a separate local user before testing linking.
   // Demo only: no verification email or password-reset delivery is configured.
   emailAndPassword: { enabled: true },
+  user: {
+    additionalFields: {
+      // Display-only provider snapshot, not a local role or MFA assertion.
+      // Better Auth 1.7.18 requires input:true for mapProfileToUser writes;
+      // the request hook below rejects all client attempts to set this field.
+      discourseProfile: { type: "json", required: false, input: true },
+    },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.body && Object.hasOwn(ctx.body, "discourseProfile")) {
+        throw new APIError("BAD_REQUEST", {
+          message:
+            "Discourse profile snapshots can only come from the provider.",
+        });
+      }
+    }),
+  },
   account: {
     accountLinking: {
       enabled: linkingEnabled,
       trustedProviders: linkingEnabled ? ["discourse"] : [],
+      // Playground opt-in: refresh the snapshot and name/avatar on linking.
+      updateUserInfoOnLink: true,
     },
   },
   plugins: [
@@ -50,10 +71,12 @@ export const auth = betterAuth({
       discourseURL: required("DISCOURSE_URL"),
       secret: required("DISCOURSE_CONNECT_SECRET"),
       disableSignUp: false,
-      overrideUserInfoOnSignIn: false,
+      // Playground opt-in: keep the displayed snapshot current on sign-in.
+      overrideUserInfoOnSignIn: true,
       mapProfileToUser: (profile) => ({
         name: profile.name,
         image: profile.image,
+        discourseProfile: { ...profile, capturedAt: new Date().toISOString() },
       }),
     }),
   ],

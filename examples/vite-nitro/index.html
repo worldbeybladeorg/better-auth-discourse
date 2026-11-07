@@ -72,6 +72,21 @@
         </form>
       </section>
 
+      <section aria-labelledby="profile-heading">
+        <h2 id="profile-heading">Discourse provider profile</h2>
+        <p>
+          Snapshot from the last successful Discourse sign-in or link, including
+          groups, staff flags, background URLs, and 2FA metadata. “Not provided”
+          is different from false or an empty group list. Refresh reads the
+          saved snapshot; sign in or link again to fetch fresh provider data.
+        </p>
+        <p>
+          These values do not grant local privileges or establish local MFA.
+          Background URLs are shown as text, not loaded as remote images.
+        </p>
+        <pre id="discourse-profile">No Discourse profile captured.</pre>
+      </section>
+
       <section aria-labelledby="session-heading">
         <h2 id="session-heading">Local session</h2>
         <div class="actions">

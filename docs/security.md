@@ -30,6 +30,18 @@ Do not describe this protocol as OAuth or OpenID Connect.
 
 ## Secrets, protocol, and sessions
 
+Discourse role/group, profile/card background, and 2FA claims are optional
+provider profile metadata. Roles/groups and backgrounds may require explicit
+Discourse provider-claim configuration; 2FA claims depend on the exchange flow.
+They are exposed to `mapProfileToUser`; recognized wire claims also accompany
+the provider profile passed to Better Auth. The plugin never automatically
+persists these fields or uses them for local authorization. Missing fields remain absent rather than
+revoking an existing application value. Treat mapped data as a potentially
+stale snapshot; define explicit refresh and revocation policy in the consuming
+application. Provider 2FA metadata does not establish local MFA assurance, and
+the integration does not request `require_2fa` or mark a local session as MFA
+authenticated.
+
 - Keep the DiscourseConnect shared secret and state-integrity key server-side in
   a secret manager or protected environment configuration. Never expose them in
   client bundles, public configuration, diagnostics, or issue reports. Use a

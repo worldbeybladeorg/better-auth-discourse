@@ -9,9 +9,36 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { formatDiscourseProfile } from "../src/discourse-profile.ts";
 
 const cwd = fileURLToPath(new URL("..", import.meta.url));
 const discourseSecret = "smoke-test-discourse-secret";
+
+test("profile display distinguishes absent claims, false, and empty groups", () => {
+  assert.match(formatDiscourseProfile(null), /No Discourse profile captured/);
+  const display = JSON.parse(
+    formatDiscourseProfile({
+      id: "member",
+      email: "member@example.test",
+      name: "Member",
+      capturedAt: "2026-01-01T00:00:00.000Z",
+      groups: [],
+      admin: false,
+      moderator: true,
+      confirmed2FA: false,
+      no2FAMethods: true,
+      profileBackgroundURL: "<script>not HTML</script>",
+    }),
+  );
+  assert.deepEqual(display.groups, []);
+  assert.equal(display.admin, false);
+  assert.equal(display.moderator, true);
+  assert.equal(display.confirmed2FA, false);
+  assert.equal(display.no2FAMethods, true);
+  assert.equal(display.cardBackgroundURL, "Not provided");
+  assert.equal(display.profileBackgroundURL, "<script>not HTML</script>");
+  assert.equal(JSON.parse(formatDiscourseProfile({})).groups, "Not provided");
+});
 
 // Exercise the actual Nitro HTTP adapter in both Vite dev and the Node build.
 // The test signs provider responses locally; no real Discourse site is contacted.
@@ -119,7 +146,7 @@ for (const mode of ["development", "production"]) {
         return response;
       }
 
-      async function roundTrip(endpoint, externalId, email) {
+      async function roundTrip(endpoint, externalId, email, claims = {}) {
         const start = await request(endpoint, {
           callbackURL: "/?flow=done",
           errorCallbackURL: "/",
@@ -150,6 +177,7 @@ for (const mode of ["development", "production"]) {
             external_id: externalId,
             email,
             name: "Test member",
+            ...claims,
           }).toString(),
         ).toString("base64");
         const sig = createHmac("sha256", discourseSecret)
@@ -167,6 +195,7 @@ for (const mode of ["development", "production"]) {
         await (await request("/")).text(),
         /DiscourseConnect playground/,
       );
+      assert.match(await (await request("/")).text(), /id="discourse-profile"/);
       assert.deepEqual(await (await request("/api/playground")).json(), {
         linkingEnabled: true,
       });
@@ -177,6 +206,15 @@ for (const mode of ["development", "production"]) {
         "/api/auth/sign-in/discourse",
         "discourse-first",
         "first@example.test",
+        {
+          groups: "Staff,Trust Level 2",
+          admin: "false",
+          moderator: "true",
+          profile_background_url: "https://forum.example.test/profile.png",
+          card_background_url: "https://forum.example.test/card.png",
+          confirmed_2fa: "true",
+          no_2fa_methods: "false",
+        },
       );
       assert.match(
         callback.headers.get("set-cookie"),
@@ -185,9 +223,42 @@ for (const mode of ["development", "production"]) {
       const first = await (await request("/api/auth/get-session")).json();
       assert.equal(first.user.email, "first@example.test");
       assert.equal(first.user.emailVerified, false);
+      assert.deepEqual(first.user.discourseProfile, {
+        id: "discourse-first",
+        email: "first@example.test",
+        name: "Test member",
+        groups: ["Staff", "Trust Level 2"],
+        admin: false,
+        moderator: true,
+        profileBackgroundURL: "https://forum.example.test/profile.png",
+        cardBackgroundURL: "https://forum.example.test/card.png",
+        confirmed2FA: true,
+        no2FAMethods: false,
+        capturedAt: first.user.discourseProfile.capturedAt,
+      });
+      assert.ok(
+        Number.isFinite(Date.parse(first.user.discourseProfile.capturedAt)),
+      );
+      // Profile metadata is server-owned even though provider mapping requires input:true.
+      const forgedUpdate = await request("/api/auth/update-user", {
+        discourseProfile: { admin: true },
+      });
+      assert.equal(forgedUpdate.status, 400);
+      assert.deepEqual(
+        (await (await request("/api/auth/get-session")).json()).user
+          .discourseProfile,
+        first.user.discourseProfile,
+      );
       assert.equal((await request("/api/auth/sign-out", {})).status, 200);
       assert.equal(await (await request("/api/auth/get-session")).json(), null);
 
+      const forgedSignup = await request("/api/auth/sign-up/email", {
+        name: "Local member",
+        email: "local@example.test",
+        password: "throwaway-password-123",
+        discourseProfile: { admin: true },
+      });
+      assert.equal(forgedSignup.status, 400);
       const signup = await request("/api/auth/sign-up/email", {
         name: "Local member",
         email: "local@example.test",
@@ -195,10 +266,18 @@ for (const mode of ["development", "production"]) {
       });
       assert.equal(signup.status, 200, await signup.clone().text());
       const local = await (await request("/api/auth/get-session")).json();
+      assert.equal(local.user.discourseProfile, null);
       await roundTrip(
         "/api/auth/discourse/link",
         "discourse-linked",
         "local@example.test",
+        {
+          groups: "",
+          admin: "true",
+          moderator: "false",
+          confirmed_2fa: "false",
+          no_2fa_methods: "true",
+        },
       );
       const accounts = await (await request("/api/auth/list-accounts")).json();
       assert.ok(
@@ -208,20 +287,35 @@ for (const mode of ["development", "production"]) {
             account.accountId === "discourse-linked",
         ),
       );
+      const linked = await (await request("/api/auth/get-session")).json();
+      assert.equal(linked.user.id, local.user.id);
+      assert.equal(linked.user.email, local.user.email);
+      assert.equal(linked.user.emailVerified, local.user.emailVerified);
+      assert.deepEqual(linked.user.discourseProfile.groups, []);
+      assert.equal(linked.user.discourseProfile.admin, true);
+      assert.equal(linked.user.discourseProfile.moderator, false);
+      assert.equal(linked.user.discourseProfile.confirmed2FA, false);
+      assert.equal(linked.user.discourseProfile.no2FAMethods, true);
       assert.equal(
-        (await (await request("/api/auth/get-session")).json()).user.id,
-        local.user.id,
+        linked.user.discourseProfile.profileBackgroundURL,
+        undefined,
       );
+      assert.equal(linked.user.admin, undefined);
       await request("/api/auth/sign-out", {});
       await roundTrip(
         "/api/auth/sign-in/discourse",
         "discourse-linked",
         "local@example.test",
       );
-      assert.equal(
-        (await (await request("/api/auth/get-session")).json()).user.id,
-        local.user.id,
-      );
+      const returning = await (await request("/api/auth/get-session")).json();
+      assert.equal(returning.user.id, local.user.id);
+      assert.equal(returning.user.discourseProfile.id, "discourse-linked");
+      // Replace the snapshot, so omitted claims do not look like fresh assertions.
+      assert.equal(returning.user.discourseProfile.groups, undefined);
+      assert.equal(returning.user.discourseProfile.admin, undefined);
+      assert.equal(returning.user.discourseProfile.confirmed2FA, undefined);
+      await request("/api/auth/sign-out", {});
+      assert.equal(await (await request("/api/auth/get-session")).json(), null);
     },
   );
 }

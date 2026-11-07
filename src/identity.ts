@@ -13,6 +13,13 @@ export interface DiscourseProfile {
   location?: string;
   title?: string;
   website?: string;
+  groups?: string[];
+  admin?: boolean;
+  moderator?: boolean;
+  profileBackgroundURL?: string;
+  cardBackgroundURL?: string;
+  confirmed2FA?: boolean;
+  no2FAMethods?: boolean;
 }
 
 export type DiscourseUserMapping = Record<string, unknown>;
@@ -70,6 +77,23 @@ function profileFrom(claims: DiscourseConnectClaims): DiscourseProfile {
     ...(claims.location !== undefined ? { location: claims.location } : {}),
     ...(claims.title !== undefined ? { title: claims.title } : {}),
     ...(claims.website !== undefined ? { website: claims.website } : {}),
+    ...(claims.groups !== undefined
+      ? { groups: claims.groups === "" ? [] : claims.groups.split(",") }
+      : {}),
+    ...(claims.admin !== undefined ? { admin: claims.admin } : {}),
+    ...(claims.moderator !== undefined ? { moderator: claims.moderator } : {}),
+    ...(claims.profile_background_url !== undefined
+      ? { profileBackgroundURL: claims.profile_background_url }
+      : {}),
+    ...(claims.card_background_url !== undefined
+      ? { cardBackgroundURL: claims.card_background_url }
+      : {}),
+    ...(claims.confirmed_2fa !== undefined
+      ? { confirmed2FA: claims.confirmed_2fa }
+      : {}),
+    ...(claims.no_2fa_methods !== undefined
+      ? { no2FAMethods: claims.no_2fa_methods }
+      : {}),
   };
 }
 

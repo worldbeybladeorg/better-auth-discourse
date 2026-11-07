@@ -62,6 +62,13 @@ export interface DiscourseConnectClaims {
   location?: string;
   title?: string;
   website?: string;
+  groups?: string;
+  admin?: boolean;
+  moderator?: boolean;
+  profile_background_url?: string;
+  card_background_url?: string;
+  confirmed_2fa?: boolean;
+  no_2fa_methods?: boolean;
 }
 
 function fail(code: DiscourseConnectFailureCode): never {
@@ -297,9 +304,24 @@ export async function verifyDiscourseConnectResponse(
     "location",
     "title",
     "website",
+    "groups",
+    "profile_background_url",
+    "card_background_url",
   ] as const) {
     const value = claimsMap.get(name);
     if (value !== undefined) claims[name] = value;
+  }
+  for (const name of [
+    "admin",
+    "moderator",
+    "confirmed_2fa",
+    "no_2fa_methods",
+  ] as const) {
+    const value = claimsMap.get(name);
+    if (value !== undefined) {
+      if (value !== "true" && value !== "false") return fail("MALFORMED_QUERY");
+      claims[name] = value === "true";
+    }
   }
   return claims;
 }

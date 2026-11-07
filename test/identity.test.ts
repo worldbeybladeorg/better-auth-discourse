@@ -36,16 +36,29 @@ function identityPlugin(
         "/identity/resolve",
         { method: "POST" },
         async (ctx) => {
-          const result = await resolveDiscourseIdentity(ctx, claims(), {
-            disableSignUp: policy.disableSignUp ?? false,
-            overrideUserInfoOnSignIn: policy.overrideUserInfoOnSignIn ?? false,
-            identityLockStorage: createBetterAuthIdentityGuard(
-              ctx.context.adapter,
-            ),
-            ...(policy.mapProfileToUser
-              ? { mapProfileToUser: policy.mapProfileToUser }
-              : {}),
-          });
+          const result = await resolveDiscourseIdentity(
+            ctx,
+            claims({
+              groups: "Staff,Trust Level 2",
+              admin: true,
+              moderator: false,
+              profile_background_url: "profile.png",
+              card_background_url: "card.png",
+              confirmed_2fa: false,
+              no_2fa_methods: true,
+            }),
+            {
+              disableSignUp: policy.disableSignUp ?? false,
+              overrideUserInfoOnSignIn:
+                policy.overrideUserInfoOnSignIn ?? false,
+              identityLockStorage: createBetterAuthIdentityGuard(
+                ctx.context.adapter,
+              ),
+              ...(policy.mapProfileToUser
+                ? { mapProfileToUser: policy.mapProfileToUser }
+                : {}),
+            },
+          );
           return ctx.json(result);
         },
       ),
@@ -567,16 +580,25 @@ describe("Discourse identity policies (Better Auth SQLite)", () => {
             input: true,
             validator: transformValidator,
           },
+          forumGroups: { type: "string[]", required: false, input: true },
+          discourseAdmin: { type: "boolean", required: false, input: true },
         },
       },
     } satisfies BetterAuthOptions;
+    let mappedProfile:
+      import("../src/identity.js").DiscourseProfile | undefined;
     const good = await setup(options, {
-      mapProfileToUser: () => ({
-        forumRole: "member",
-        normalizedRole: " MEMBER ",
-        emailVerified: true,
-        id: "spoof",
-      }),
+      mapProfileToUser: (profile) => {
+        mappedProfile = profile;
+        return {
+          forumRole: "member",
+          normalizedRole: " MEMBER ",
+          forumGroups: profile.groups,
+          discourseAdmin: profile.admin,
+          emailVerified: true,
+          id: "spoof",
+        };
+      },
     });
     expect(
       await (await good.response("/identity/resolve")).json(),
@@ -587,7 +609,29 @@ describe("Discourse identity policies (Better Auth SQLite)", () => {
           ctx.internalAdapter.findUserByEmail("person@example.test"),
         )
       )?.user,
-    ).toMatchObject({ forumRole: "member", normalizedRole: "member" });
+    ).toMatchObject({
+      forumRole: "member",
+      normalizedRole: "member",
+      forumGroups: ["Staff", "Trust Level 2"],
+      discourseAdmin: true,
+      emailVerified: false,
+    });
+    expect(mappedProfile).toMatchObject({
+      groups: ["Staff", "Trust Level 2"],
+      admin: true,
+      moderator: false,
+      profileBackgroundURL: "profile.png",
+      cardBackgroundURL: "card.png",
+      confirmed2FA: false,
+      no2FAMethods: true,
+    });
+    expect(
+      (
+        await good.auth.$context.then((ctx) =>
+          ctx.internalAdapter.findUserByEmail("person@example.test"),
+        )
+      )?.user,
+    ).not.toHaveProperty("moderator");
     const bad = await setup(options, {
       mapProfileToUser: () => ({ forumRole: "admin" }),
     });

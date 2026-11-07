@@ -1,4 +1,6 @@
 import { authClient } from "./auth-client.ts";
+import { formatDiscourseProfile } from "./discourse-profile.ts";
+import type { DiscourseProfileSnapshot } from "./discourse-profile.ts";
 import "./style.css";
 
 function element<T extends HTMLElement>(selector: string): T {
@@ -35,10 +37,14 @@ async function refresh(): Promise<void> {
   const result = await authClient.getSession();
   checkError(result);
   signedIn = Boolean(result.data);
+  const { discourseProfile, ...user } = result.data?.user ?? {};
+  element("#discourse-profile").textContent = formatDiscourseProfile(
+    discourseProfile as DiscourseProfileSnapshot | null | undefined,
+  );
   // Select display fields explicitly: don't dump the session token or accounts' credentials.
   const session = result.data
     ? {
-        user: result.data.user,
+        user,
         session: {
           id: result.data.session.id,
           userId: result.data.session.userId,

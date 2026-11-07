@@ -173,6 +173,54 @@ describe("DiscourseConnect protocol", () => {
     ).rejects.toMatchObject({ code: "MALFORMED_QUERY" });
   });
 
+  it("exposes provider role, group, background, and 2FA claims", async () => {
+    await expect(
+      verifyDiscourseConnectResponse(
+        await responseFor(
+          "nonce=n&external_id=1&email=a%40b.test&groups=Staff%2CTrust%20Level%202&admin=true&moderator=false&profile_background_url=%2Fprofile&card_background_url=%2Fcard&confirmed_2fa=false&no_2fa_methods=true",
+        ),
+        secret,
+      ),
+    ).resolves.toMatchObject({
+      groups: "Staff,Trust Level 2",
+      admin: true,
+      moderator: false,
+      profile_background_url: "/profile",
+      card_background_url: "/card",
+      confirmed_2fa: false,
+      no_2fa_methods: true,
+    });
+    const absent = await verifyDiscourseConnectResponse(
+      await responseFor("nonce=n&external_id=1&email=a%40b.test&groups="),
+      secret,
+    );
+    expect(absent).toHaveProperty("groups", "");
+    expect(absent).not.toHaveProperty("admin");
+    for (const claim of [
+      "admin",
+      "moderator",
+      "confirmed_2fa",
+      "no_2fa_methods",
+    ]) {
+      await expect(
+        verifyDiscourseConnectResponse(
+          await responseFor(
+            `nonce=n&external_id=1&email=a%40b.test&${claim}=yes`,
+          ),
+          secret,
+        ),
+      ).rejects.toMatchObject({ code: "MALFORMED_QUERY" });
+      await expect(
+        verifyDiscourseConnectResponse(
+          await responseFor(
+            `nonce=n&external_id=1&email=a%40b.test&${claim}=true&${claim}=false`,
+          ),
+          secret,
+        ),
+      ).rejects.toMatchObject({ code: "DUPLICATE_PARAMETER" });
+    }
+  });
+
   it("accepts unknown signed claims but rejects unknown outer parameters", async () => {
     const claims = await verifyDiscourseConnectResponse(
       await responseFor(

@@ -82,9 +82,17 @@ try {
     `
     import { createAuthClient } from "better-auth/client";
     import { discourse } from "better-auth-discourse";
+    import type { DiscourseProfile } from "better-auth-discourse";
     import { discourseClient } from "better-auth-discourse/client";
     import { createSqliteTransactionStateStorage } from "better-auth-discourse/storage/sqlite";
     void discourse; void createSqliteTransactionStateStorage;
+    const profile: DiscourseProfile = {
+      id: "subject", email: "person@example.test", name: "Person",
+      groups: ["Staff"], admin: false, moderator: true,
+      profileBackgroundURL: "/profile", cardBackgroundURL: "/card",
+      confirmed2FA: false, no2FAMethods: true,
+    };
+    void profile;
     const authClient = createAuthClient({ plugins: [discourseClient()] });
     void authClient.signIn.discourse({ callbackURL: "/dashboard" });
     void authClient.discourse.link({ callbackURL: "/settings/accounts" });

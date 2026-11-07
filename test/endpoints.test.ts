@@ -13,9 +13,10 @@ function callbackQuery(
   nonce: string,
   externalId = "member-42",
   email = "member@example.test",
+  extraClaims = "",
 ) {
   const payload = Buffer.from(
-    `nonce=${encodeURIComponent(nonce)}&external_id=${externalId}&email=${encodeURIComponent(email)}`,
+    `nonce=${encodeURIComponent(nonce)}&external_id=${externalId}&email=${encodeURIComponent(email)}${extraClaims ? `&${extraClaims}` : ""}`,
   ).toString("base64");
   const signature = createHmac("sha256", "test-discourse-secret")
     .update(payload)
@@ -55,6 +56,100 @@ async function begin(
 }
 
 describe("Discourse endpoint composition", () => {
+  it("passes signed provider profile claims to the mapper on sign-in and explicit linking", async () => {
+    const observed: import("../src/identity.js").DiscourseProfile[] = [];
+    const { auth } = await setup({
+      mapProfileToUser: (profile) => {
+        observed.push(profile);
+        return {};
+      },
+    });
+    const { nonce, cookie } = await begin(auth);
+    const signedClaims =
+      "groups=&admin=false&moderator=true&profile_background_url=%2Fprofile.png&card_background_url=%2Fcard.png&confirmed_2fa=false&no_2fa_methods=true";
+    const signedIn = await auth.handler(
+      new Request(
+        `http://localhost:3000/api/auth/discourse/callback?${callbackQuery(nonce, "member-42", "member@example.test", signedClaims)}`,
+        { headers: { cookie } },
+      ),
+    );
+    expect(signedIn.status).toBe(302);
+    expect(observed[0]).toMatchObject({
+      groups: [],
+      admin: false,
+      moderator: true,
+      profileBackgroundURL: "/profile.png",
+      cardBackgroundURL: "/card.png",
+      confirmed2FA: false,
+      no2FAMethods: true,
+    });
+    expect(observed[0]).not.toHaveProperty("username");
+
+    const { auth: linkingAuth } = await setup(
+      {
+        mapProfileToUser: (profile) => {
+          observed.push(profile);
+          return {};
+        },
+      },
+      {
+        account: {
+          accountLinking: {
+            enabled: true,
+            allowDifferentEmails: true,
+            trustedProviders: ["discourse"],
+          },
+        },
+      },
+    );
+    const signup = await linkingAuth.handler(
+      new Request("http://localhost:3000/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Local User",
+          email: "local@example.test",
+          password: "password-123456",
+        }),
+      }),
+    );
+    const localCookie = signup.headers.get("set-cookie")!.split(";")[0]!;
+    const start = await linkingAuth.handler(
+      new Request("http://localhost:3000/api/auth/discourse/link", {
+        method: "POST",
+        headers: { cookie: localCookie, "content-type": "application/json" },
+        body: JSON.stringify({ callbackURL: "/settings/accounts" }),
+      }),
+    );
+    const encoded = new URL((await start.json()).url).searchParams.get("sso")!;
+    const linkNonce = new URLSearchParams(
+      Buffer.from(encoded, "base64").toString(),
+    ).get("nonce")!;
+    const binding = start.headers.get("set-cookie")!.split(";")[0]!;
+    const linked = await linkingAuth.handler(
+      new Request(
+        `http://localhost:3000/api/auth/discourse/callback?${callbackQuery(linkNonce, "linked-42", "provider@example.test", "groups=Staff%2CTrust%20Level%202&admin=true&moderator=false&profile_background_url=%2Fprovider-profile&card_background_url=%2Fprovider-card&confirmed_2fa=true&no_2fa_methods=false")}`,
+        { headers: { cookie: `${localCookie}; ${binding}` } },
+      ),
+    );
+    expect(linked.status).toBe(302);
+    expect(linked.headers.get("location")).toBe("/settings/accounts");
+    expect(observed[1]).toMatchObject({
+      groups: ["Staff", "Trust Level 2"],
+      admin: true,
+      moderator: false,
+      profileBackgroundURL: "/provider-profile",
+      cardBackgroundURL: "/provider-card",
+      confirmed2FA: true,
+      no2FAMethods: false,
+    });
+    const localUser = await (
+      await linkingAuth.$context
+    ).internalAdapter.findUserByEmail("local@example.test");
+    expect(localUser?.user).not.toHaveProperty("admin");
+    expect(localUser?.user).not.toHaveProperty("confirmed2FA");
+  });
+
   it("registers both persistent schemas and returns the documented redirect result", async () => {
     const { auth } = await setup();
     const response = await auth.handler(
