@@ -27,3 +27,6 @@ _Avoid_: User
 
 **Local session**:
 An authenticated session in the consuming application, independent of the person's session on Discourse.
+
+**DiscourseConnect transaction**:
+A single browser-bound attempt to sign in or explicitly link a Discourse identity, connecting an authorization request to its corresponding callback.

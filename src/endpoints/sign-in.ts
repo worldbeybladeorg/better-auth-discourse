@@ -1,14 +1,6 @@
 import { createAuthEndpoint } from "better-auth/api";
 import { z } from "zod";
-import { createDiscourseConnectRequest } from "../protocol.js";
-import { createTransactionState } from "../state.js";
-import { createBetterAuthTransactionStateStorage } from "../storage/better-auth.js";
-import {
-  callbackEndpointURL,
-  destination,
-  originPolicy,
-  setBinding,
-} from "./common.js";
+import { beginDiscourseTransaction } from "./transaction.js";
 import { discourseAPIError } from "../errors.js";
 
 export const createSignInDiscourse = (options: {
@@ -26,28 +18,9 @@ export const createSignInDiscourse = (options: {
     },
     async (ctx) => {
       try {
-        const body = (ctx.body ?? {}) as Record<string, unknown>;
-        const successURL = destination(ctx, body.callbackURL, "/");
-        const errorURL = destination(ctx, body.errorCallbackURL, successURL);
-        const callbackURL = callbackEndpointURL(ctx);
-        const state = await createTransactionState(
-          createBetterAuthTransactionStateStorage(ctx.context.adapter),
-          {
-            operation: "sign-in",
-            successURL,
-            errorURL,
-            trustedOrigins: originPolicy(ctx),
-          },
-          ctx.context.secret,
+        return ctx.json(
+          await beginDiscourseTransaction(ctx, options, "sign-in"),
         );
-        const request = await createDiscourseConnectRequest({
-          discourseURL: options.discourseURL,
-          returnSSOURL: callbackURL,
-          nonce: state.nonce,
-          secret: options.secret,
-        });
-        setBinding(ctx, state.nonce, state.browserSecret, state.expiresAt);
-        return ctx.json({ url: request.authorizationURL, redirect: true });
       } catch {
         throw discourseAPIError("INVALID_REQUEST");
       }

@@ -1,10 +1,29 @@
 # Transaction-state contract
 
 `src/state.ts` intentionally separates protocol transaction state from HTTP
-cookie handling. Endpoints create the browser secret and place it in a
-HttpOnly/Secure/SameSite cookie; callbacks read that cookie and call
-`consumeTransactionState` only after verifying the Discourse response and its
-nonce. Do not consume state before the callback's browser binding matches.
+cookie handling. The internal HTTP transaction module in
+`src/endpoints/transaction.ts` coordinates state creation and browser-binding
+cookies. Callback recovery verifies the Discourse response and its nonce before
+calling `consumeTransactionState`. Do not consume state before the callback's
+browser binding matches.
+
+## HTTP transaction workflow
+
+Both initiation endpoints use `beginDiscourseTransaction` for destination defaults,
+linking-session capture, state persistence, request signing, and cookie issuance.
+Each endpoint retains its existing request schema and error mapping.
+
+The callback uses `recoverDiscourseTransaction` to verify the raw query, consume
+state, and clear the browser binding. Its returned completion operation revalidates
+the initiating local session before invoking identity work and composes success
+or error redirects from stored destinations. Identity resolution/linking and
+local-session issuance remain in the callback endpoint, outside this module.
+Identity-guard construction stays after recovery and outside the completion
+operation's redirect-error catch, preserving the existing failure ordering.
+
+Binding-cookie issuance and removal share one private implementation. Cookie
+removal follows a returned state consumption, including a null result, but not
+protocol rejection, a missing browser binding, or a thrown storage error.
 
 ## Persistence requirement
 
