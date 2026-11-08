@@ -252,8 +252,8 @@ importers:
         specifier: 1.7.18
         version: 1.7.18(vitest@3.2.7(@types/node@24.19.2)(lightningcss@1.33.0))
       better-auth-discourse:
-        specifier: workspace:*
-        version: link:../..
+        specifier: ^0.1.0
+        version: 0.1.0(better-auth@1.7.18(vitest@3.2.7(@types/node@24.19.2)(lightningcss@1.33.0)))
     devDependencies:
       '@types/node':
         specifier: ^24.10.0
@@ -1270,6 +1270,12 @@ packages:
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
+
+  better-auth-discourse@0.1.0:
+    resolution: {integrity: sha512-PRxjeNCAakpyzI4zVscOU88+LC4Uk1cXd3t/korxaIyOPoHxZKg0sY8LQRbOsDqV1OOGPSknwNiQuIgFDb4FWA==}
+    engines: {node: '>=24'}
+    peerDependencies:
+      better-auth: 1.7.18
 
   better-auth@1.7.18:
     resolution: {integrity: sha512-VmPc441MZhOKYaRHLgJTXl3T4H7tWZiiYJoMSTl0ZhsEKyAjGm1UdJfghZmFMpzNe+1NLCTUoTAARhi58vcd0g==}
@@ -2765,6 +2771,11 @@ snapshots:
   assertion-error@2.0.1: {}
 
   balanced-match@4.0.4: {}
+
+  better-auth-discourse@0.1.0(better-auth@1.7.18(vitest@3.2.7(@types/node@24.19.2)(lightningcss@1.33.0))):
+    dependencies:
+      better-auth: 1.7.18(vitest@3.2.7(@types/node@24.19.2)(lightningcss@1.33.0))
+      zod: 4.6.7
 
   better-auth@1.7.18(vitest@3.2.7(@types/node@24.19.2)(lightningcss@1.33.0)):
     dependencies:

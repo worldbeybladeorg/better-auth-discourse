@@ -10,8 +10,8 @@ exports.
 npm install better-auth@1.7.18 better-auth-discourse
 ```
 
-Better Auth is a peer dependency; applications should install the pinned
-`better-auth@1.7.18` release explicitly.
+Better Auth is a peer dependency with the range `^1.7.18` (at least 1.7.18,
+below 2.0.0). Compatibility tests currently run against `1.7.18`.
 
 ## Database migration
 

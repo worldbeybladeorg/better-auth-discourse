@@ -39,7 +39,7 @@
     "zod": "4.6.7"
   },
   "peerDependencies": {
-    "better-auth": "1.7.18"
+    "better-auth": "^1.7.18"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
