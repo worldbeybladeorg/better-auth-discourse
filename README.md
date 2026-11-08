@@ -196,6 +196,11 @@ client, and SQLite entry points. Runtime and peer dependencies stay external.
 Type checking is a separate `pnpm typecheck` step; `validate:package` builds and
 checks the packed exports, consumer types, and client/server isolation.
 
+## Publishing
+
+Maintainers: see [Publishing to npm](docs/publishing.md) for the GitHub Release
+workflow, trusted publisher setup, and release gates.
+
 ## Integration examples
 
 For a runnable browser playground, see
