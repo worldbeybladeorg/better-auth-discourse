@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "DiscourseConnect authentication plugin for Better Auth",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/worldbeybladeorg/better-auth-discourse.git"
+  },
   "type": "module",
   "files": [
     "dist"
