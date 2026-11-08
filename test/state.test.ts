@@ -1,74 +1,39 @@
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { betterAuth } from "better-auth";
+import { getMigrations } from "better-auth/db/migration";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   consumeTransactionState,
   createTransactionState,
+  transactionStateSchema,
   type StoredTransactionState,
   type TransactionStateStorage,
   validateDestination,
 } from "../src/state.js";
+import { createBetterAuthTransactionStateStorage } from "../src/storage/better-auth.js";
 
 const dirs: string[] = [];
-function openStorage(file: string): {
-  storage: TransactionStateStorage;
-  close: () => void;
-} {
-  const db = new Database(file);
-  db.exec(`CREATE TABLE IF NOT EXISTS transaction_state (
-    state_hash TEXT PRIMARY KEY, browser_binding_hash TEXT NOT NULL, nonce TEXT NOT NULL,
-    expires_at INTEGER NOT NULL, operation TEXT NOT NULL, success_url TEXT NOT NULL,
-    error_url TEXT NOT NULL, initiating_user_id TEXT, initiating_session_id TEXT,
-    initiating_session_token_hash TEXT, integrity TEXT NOT NULL
-  )`);
-  const insert = db.prepare(`INSERT INTO transaction_state VALUES
-    (@stateHash,@browserBindingHash,@nonce,@expiresAt,@operation,@successURL,@errorURL,
-     @initiatingUserId,@initiatingSessionId,@initiatingSessionTokenHash,@integrity)`);
-  const consume = db.prepare(`DELETE FROM transaction_state
-    WHERE state_hash = ? AND browser_binding_hash = ? AND expires_at > ? RETURNING *`);
+const databases: DatabaseSync[] = [];
+async function openStorage(file: string) {
+  const db = new DatabaseSync(file);
+  databases.push(db);
+  const options = {
+    database: db,
+    baseURL: "https://app.example.test",
+    secret: "stable-state-test-secret-long-enough-for-validation",
+    rateLimit: { enabled: false },
+    plugins: [{ id: "discourse-state-test", schema: transactionStateSchema }],
+  };
+  const { runMigrations } = await getMigrations(options);
+  await runMigrations();
+  const auth = betterAuth(options);
+  const { adapter } = await auth.$context;
   return {
-    storage: {
-      async insert(s: StoredTransactionState) {
-        insert.run({
-          stateHash: s.stateHash,
-          browserBindingHash: s.browserBindingHash,
-          nonce: s.nonce,
-          expiresAt: s.expiresAt,
-          operation: s.operation,
-          successURL: s.successURL,
-          errorURL: s.errorURL,
-          initiatingUserId: s.initiatingUserId ?? null,
-          initiatingSessionId: s.initiatingSessionId ?? null,
-          initiatingSessionTokenHash: s.initiatingSessionTokenHash ?? null,
-          integrity: s.integrity,
-        });
-      },
-      async consume(input) {
-        const row = consume.get(
-          input.stateHash,
-          input.browserBindingHash,
-          input.now,
-        ) as Record<string, unknown> | undefined;
-        if (!row) return null;
-        return {
-          stateHash: row.state_hash,
-          browserBindingHash: row.browser_binding_hash,
-          nonce: row.nonce,
-          expiresAt: row.expires_at,
-          operation: row.operation,
-          successURL: row.success_url,
-          errorURL: row.error_url,
-          initiatingUserId: row.initiating_user_id ?? undefined,
-          initiatingSessionId: row.initiating_session_id ?? undefined,
-          initiatingSessionTokenHash:
-            row.initiating_session_token_hash ?? undefined,
-          integrity: row.integrity,
-        } as StoredTransactionState;
-      },
-    },
-    close: () => db.close(),
+    storage: createBetterAuthTransactionStateStorage(adapter),
+    adapter,
   };
 }
 function file(): string {
@@ -77,6 +42,7 @@ function file(): string {
   return join(dir, "state.sqlite");
 }
 afterEach(() => {
+  for (const db of databases.splice(0)) db.close();
   for (const dir of dirs.splice(0))
     rmSync(dir, { recursive: true, force: true });
 });
@@ -89,11 +55,11 @@ const input = {
   ...policy,
 };
 
-describe("persistent transaction state", () => {
+describe("persistent transaction state (Better Auth SQLite)", () => {
   it("binds browser, nonce, operation, destinations and expires exactly once", async () => {
     const path = file();
-    const a = openStorage(path);
-    const b = openStorage(path);
+    const a = await openStorage(path);
+    const b = await openStorage(path);
     const created = await createTransactionState(
       a.storage,
       { ...input, browserSecret: "browser-secret", now: 10_000, ttlMs: 100 },
@@ -123,14 +89,12 @@ describe("persistent transaction state", () => {
         "signing-key",
       ),
     ).toBeNull();
-    a.close();
-    b.close();
   });
 
   it("has one winner across independent database connections", async () => {
     const path = file();
-    const first = openStorage(path);
-    const second = openStorage(path);
+    const first = await openStorage(path);
+    const second = await openStorage(path);
     const created = await createTransactionState(
       first.storage,
       { ...input, browserSecret: "browser-secret" },
@@ -149,12 +113,10 @@ describe("persistent transaction state", () => {
       ),
     ]);
     expect(results.filter(Boolean)).toHaveLength(1);
-    first.close();
-    second.close();
   });
 
   it("rejects expired and absent state", async () => {
-    const { storage, close } = openStorage(file());
+    const { storage, adapter } = await openStorage(file());
     const created = await createTransactionState(
       storage,
       { ...input, browserSecret: "browser-secret", now: 100, ttlMs: 5 },
@@ -174,11 +136,16 @@ describe("persistent transaction state", () => {
         "signing-key",
       ),
     ).toBeNull();
-    close();
+    expect(
+      await adapter.findOne({
+        model: "discourseConnectState",
+        where: [{ field: "nonce", value: created.nonce }],
+      }),
+    ).toMatchObject({ nonce: created.nonce });
   });
 
   it("persists only a hash of the initiating session token and binds link context", async () => {
-    const { storage, close } = openStorage(file());
+    const { storage } = await openStorage(file());
     const created = await createTransactionState(
       storage,
       {
@@ -202,22 +169,21 @@ describe("persistent transaction state", () => {
       initiatingSessionId: "s1",
     });
     expect(value?.initiatingSessionTokenHash).not.toBe("bearer");
-    close();
   });
 
   it("rejects destination tampering using the integrity key", async () => {
     const path = file();
-    const { storage, close } = openStorage(path);
+    const { storage, adapter } = await openStorage(path);
     const created = await createTransactionState(
       storage,
       { ...input, browserSecret: "browser-secret" },
       "signing-key",
     );
-    const db = new Database(path);
-    db.prepare("UPDATE transaction_state SET success_url = ?").run(
-      "https://evil.example/",
-    );
-    db.close();
+    await adapter.update({
+      model: "discourseConnectState",
+      where: [{ field: "nonce", value: created.nonce }],
+      update: { successURL: "https://evil.example/" },
+    });
     expect(
       await consumeTransactionState(
         storage,
@@ -225,20 +191,21 @@ describe("persistent transaction state", () => {
         "signing-key",
       ),
     ).toBeNull();
-    close();
   });
 
   it("rejects operation tampering using the integrity key", async () => {
     const path = file();
-    const { storage, close } = openStorage(path);
+    const { storage, adapter } = await openStorage(path);
     const created = await createTransactionState(
       storage,
       { ...input, browserSecret: "browser-secret" },
       "signing-key",
     );
-    const db = new Database(path);
-    db.prepare("UPDATE transaction_state SET operation = ?").run("link");
-    db.close();
+    await adapter.update({
+      model: "discourseConnectState",
+      where: [{ field: "nonce", value: created.nonce }],
+      update: { operation: "link" },
+    });
     expect(
       await consumeTransactionState(
         storage,
@@ -246,11 +213,10 @@ describe("persistent transaction state", () => {
         "signing-key",
       ),
     ).toBeNull();
-    close();
   });
 
   it("revalidates storage hashes, operation and link fields at consumption", async () => {
-    const { storage, close } = openStorage(file());
+    const { storage } = await openStorage(file());
     const created = await createTransactionState(
       storage,
       { ...input, browserSecret: "browser-secret" },
@@ -276,11 +242,10 @@ describe("persistent transaction state", () => {
         "signing-key",
       ),
     ).toBeNull();
-    close();
   });
 
   it("rejects invalid lifetime values and sign-in records carrying link context", async () => {
-    const { storage, close } = openStorage(file());
+    const { storage } = await openStorage(file());
     for (const ttlMs of [
       0,
       -1,
@@ -306,7 +271,6 @@ describe("persistent transaction state", () => {
         "signing-key",
       ),
     ).rejects.toThrow("INVALID_LINK_SESSION");
-    close();
   });
 
   it("validates destinations with the reusable origin policy", () => {

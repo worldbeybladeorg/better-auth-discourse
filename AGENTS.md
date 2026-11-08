@@ -40,7 +40,7 @@
 
 - `src/index.ts` composes the server plugin's endpoints and both plugin schemas.
   `src/client.ts` is a separate browser entry: keep its server imports type-only.
-  Node SQLite storage is exposed only through `better-auth-discourse/storage/sqlite`.
+  Transaction state and identity guards use the host Better Auth database adapter.
 - Better Auth compatibility is pinned to 1.7.18. For dependency upgrades, consult
   `docs/integration-seams.md` and `test/better-auth-compat.test.ts`; passing SQLite
   tests is not evidence for other adapters or real Discourse deployments.

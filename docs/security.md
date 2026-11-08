@@ -66,7 +66,7 @@ Apply the host's normal Better Auth migration before enabling endpoints. The
 plugin contributes two plugin-owned models:
 
 - `discourseConnectState` stores single-use transaction records. Its storage
-  adapter must provide atomic conditional consumption. The default Better Auth
+  adapter must provide atomic conditional consumption. The Better Auth
   implementation requires `consumeOne`; do not replace it with read-then-delete
   or a process-local map/lock. SQLite compatibility was tested against the
   Better Auth 1.7.18 test adapter, not every custom adapter or SQL dialect.
@@ -125,9 +125,9 @@ cleanup; protect database backups and restrict operational access to them.
 ## Compatibility boundary
 
 The recorded compatibility baseline is Better Auth **1.7.18**, with real-SQLite
-adapter tests. The package declares Node.js `>=24`; optional built-in SQLite
-storage requires Node.js 22.13+ and is tested on Node 24. These statements are
-not a guarantee for untested Better Auth versions, Node releases, SQL dialects,
-custom adapters, or real Discourse deployments. The real-instance checklist in
-[`release-checklist.md`](release-checklist.md) remains **PENDING** until an
+adapter tests on Node 24. The package declares Node.js `>=24` and uses the host's
+configured Better Auth database adapter, not a separate SQLite store. These
+statements are not a guarantee for untested Better Auth versions, Node releases,
+SQL dialects, custom adapters, or real Discourse deployments. The real-instance
+checklist in [`release-checklist.md`](release-checklist.md) remains **PENDING** until an
 operator completes it against a recorded Discourse version/build.

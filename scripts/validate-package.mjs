@@ -49,11 +49,14 @@ try {
   const packageJson = JSON.parse(
     await readFile(join(packageDir, "package.json"), "utf8"),
   );
+  const packedFiles = await readdir(join(packageDir, "dist"), {
+    recursive: true,
+  });
   if (
-    packageJson.exports?.["./storage/sqlite"]?.import !==
-    "./dist/storage/sqlite.js"
+    packageJson.exports?.["./storage/sqlite"] ||
+    packedFiles.some((file) => file.startsWith(join("storage", "sqlite.")))
   ) {
-    throw new Error("Packed package is missing the Node SQLite subpath export");
+    throw new Error("Packed package still includes standalone SQLite storage");
   }
   await writeFile(
     join(consumer, "package.json"),
@@ -64,8 +67,7 @@ try {
     `
     import * as server from "better-auth-discourse";
     import * as client from "better-auth-discourse/client";
-    import * as sqlite from "better-auth-discourse/storage/sqlite";
-    if (!server.discourse || !client.discourseClient || !sqlite.createSqliteTransactionStateStorage) {
+    if (!server.discourse || !client.discourseClient) {
       throw new Error("Expected public exports were not found");
     }
   `,
@@ -84,8 +86,7 @@ try {
     import { discourse } from "better-auth-discourse";
     import type { DiscourseProfile } from "better-auth-discourse";
     import { discourseClient } from "better-auth-discourse/client";
-    import { createSqliteTransactionStateStorage } from "better-auth-discourse/storage/sqlite";
-    void discourse; void createSqliteTransactionStateStorage;
+    void discourse;
     const profile: DiscourseProfile = {
       id: "subject", email: "person@example.test", name: "Person",
       groups: ["Staff"], admin: false, moderator: true,
@@ -158,7 +159,7 @@ try {
     );
   }
   console.log(
-    "Packed server/client/SQLite imports, declaration resolution, and client isolation passed.",
+    "Packed server/client imports, declaration resolution, client isolation, and standalone SQLite removal passed.",
   );
 } finally {
   await rm(tempRoot, { recursive: true, force: true });

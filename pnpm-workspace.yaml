@@ -11,5 +11,4 @@ minimumReleaseAgeExclude:
   - "@better-auth/telemetry@1.7.18"
   - better-auth@1.7.18
 allowBuilds:
-  better-sqlite3: true
   esbuild: true

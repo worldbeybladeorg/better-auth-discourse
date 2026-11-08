@@ -13,6 +13,11 @@ Both the Better Auth development dependency and peer dependency are pinned to ex
 
 `corepack pnpm approve-builds better-sqlite3 esbuild` approved only the two selected build dependencies and successfully ran their lifecycle builds. Tests use `getTestInstance` from `better-auth/test`; in v1.7.18 it creates a real in-memory SQLite database with Node 24's built-in `node:sqlite` `DatabaseSync`, runs Better Auth migrations, and executes requests through `auth.handler`. This avoids native SQLite runtime requirements in CI. The `better-sqlite3` native build was also successfully completed, though it is not the test adapter.
 
+The handwritten state-test adapter and its `better-sqlite3` dependency have since
+been removed, along with the optional standalone Node SQLite storage module. The
+state behavior tests now use Better Auth-managed storage, including plugin
+migrations and atomic consumption across two database connections sharing a file.
+
 ## Behaviorally tested contracts
 
 | Behavior                                          | Public seam and result                                                                                                                                                                                                                                                                                                                                                                        |

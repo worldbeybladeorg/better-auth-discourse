@@ -15,10 +15,6 @@
     "./client": {
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"
-    },
-    "./storage/sqlite": {
-      "types": "./dist/storage/sqlite.d.ts",
-      "import": "./dist/storage/sqlite.js"
     }
   },
   "scripts": {
@@ -43,10 +39,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.10.0",
     "better-auth": "1.7.18",
-    "better-sqlite3": "^12.4.1",
     "esbuild": "^0.25.12",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",

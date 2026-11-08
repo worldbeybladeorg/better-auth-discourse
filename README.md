@@ -15,6 +15,12 @@ Better Auth is a peer dependency; applications should install the pinned
 
 ## Database migration
 
+Transaction state and identity guards use Better Auth's configured database
+adapter; the plugin does not open a separate SQLite database. SQLite in the
+examples is a host configuration choice, not a plugin requirement. Other adapters
+must provide atomic consumption and unique guard keys; compatibility has only
+been verified against Better Auth's SQLite adapter.
+
 The server plugin contributes schema for persistent Discourse transaction state
 and identity-ownership guards. Better Auth itself contributes its standard
 `user`, `session`, `account`, and `verification` models. Apply migrations for

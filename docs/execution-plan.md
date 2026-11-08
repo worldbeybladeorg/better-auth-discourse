@@ -59,9 +59,10 @@ No real-Discourse check or publication has been performed.
   required fields do not authenticate and release the durable guards.
 - D: State hardening and production stores delivered. The exposed Better Auth
   adapter's atomic `consumeOne` supports default host-database storage through
-  `transactionStateSchema`; optional Node SQLite storage is also available.
-  Coordinator independently reran state/storage tests: 14 pass. Plugin schema
-  migration and endpoint wiring remain part of E.
+  `transactionStateSchema`. The optional standalone Node SQLite storage was later
+  removed; the state behavior tests now exercise Better Auth-managed storage.
+  Coordinator independently reran state/storage tests at delivery: 14 pass.
+  Plugin schema migration and endpoint wiring remain part of E.
 - E: Complete with 18 passing endpoint tests, including expiry, ownership
   conflicts, replaced sessions, redirect rejection, persistent-database
   configuration, explicit error codes, and deterministic signature tampering.

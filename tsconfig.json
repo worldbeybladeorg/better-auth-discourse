@@ -5,8 +5,7 @@
     "moduleResolution": "NodeNext",
     "paths": {
       "better-auth-discourse": ["./src/index.ts"],
-      "better-auth-discourse/client": ["./src/client.ts"],
-      "better-auth-discourse/storage/sqlite": ["./src/storage/sqlite.ts"]
+      "better-auth-discourse/client": ["./src/client.ts"]
     },
     "strict": true,
     "noEmit": true,

@@ -20,7 +20,7 @@ does not depend on that composition. Compatibility was verified against the
 pinned SQLite Better Auth test adapter, not every custom or third-party
 adapter.
 
-The exported `TransactionStateStorage` contract is deliberately narrow:
+The internal `TransactionStateStorage` interface is deliberately narrow:
 
 - `insert` persists an opaque record under unique `stateHash`.
 - `consume` performs an atomic conditional delete matching state hash, browser
@@ -28,7 +28,7 @@ The exported `TransactionStateStorage` contract is deliberately narrow:
   and returns null for mismatches/expired/missing records without consuming a
   browser-mismatch record.
 
-The recommended default is `createBetterAuthTransactionStateStorage(ctx.context.adapter)`
+The plugin uses `createBetterAuthTransactionStateStorage(ctx.context.adapter)`
 from `src/storage/better-auth.ts`. Register `transactionStateSchema` from
 `src/state.ts` in the Better Auth plugin's `schema` contribution so the host's
 normal Better Auth migration tooling sees the `discourseConnectState` model.
@@ -37,36 +37,16 @@ apply the generated schema before serving plugin endpoints. The adapter
 factory deliberately requires `create` and `consumeOne`; it fails closed when
 the latter is unavailable rather than downgrading to read/delete.
 
-The optional Node SQLite implementation is
-`createSqliteTransactionStateStorage(database)` from
-`src/storage/sqlite.ts`. It creates/migrates the plugin-owned
-`better_auth_discourse_state` table and consumes via one
-`DELETE ... WHERE state_hash=? AND browser_binding_hash=? AND expires_at>?
-RETURNING *` statement. Supply a Node `DatabaseSync` connected to a persistent
-file; the caller owns connection lifecycle. This implementation requires
-Node.js 22.13+ with `node:sqlite` available (tested on Node 24) and is not a
-cross-dialect Better Auth migration. Other deployments must implement the
-interface against a database with an equivalent atomic primitive. All
-processes/instances handling the same callback must share the same durable
-storage and atomicity boundary. Process-local maps/locks are not valid
-implementations.
+Storage follows Better Auth's configured database adapter. The plugin does not
+provide a separate database driver or standalone SQLite storage export. The host
+owns database connections and migrations. All processes/instances handling the
+same callback must share the same durable storage and atomic consumption
+semantics. Process-local maps/locks are not valid implementations.
 
-Expired rows do not authenticate because `consume` filters expiry. Run
-`cleanupExpiredSqliteTransactionState(database)` periodically or at startup to
-bound table growth; this cleanup is maintenance only, not a security boundary.
-The schema migration uses `CREATE TABLE/INDEX IF NOT EXISTS`. SQLite's atomic
-single-statement delete returning row is the winner claim; no surrounding
-multi-step transaction or database-driver dependency is required by the
-portable core.
-
-Usage in a Node server is to open the host's durable file once during startup,
-pass it to `createSqliteTransactionStateStorage`, then pass that storage object
-to `createTransactionState`/`consumeTransactionState`. Keep the database
-connection open for the server lifetime and close it during shutdown. Do not
-use `:memory:` in production or create a separate file per worker. The
-coordinator must expose this helper as a server-only package subpath (for
-example `better-auth-discourse/storage/sqlite`); package exports are not owned
-by this state work.
+Expired rows do not authenticate because `consume` filters expiry. Periodically
+remove expired `discourseConnectState` records through a host-database maintenance
+operation to bound table growth. Cleanup is maintenance only, not a security
+control; migrations and cleanup are not authentication request work.
 
 ## Bound data and linking contract
 
@@ -94,10 +74,10 @@ being retained as relative paths for redirect composition.
 
 ## Reference verification
 
-Tests use real SQLite with two independent connections sharing a file for the
-optional Node storage, and Better Auth's real SQLite test adapter for the
-recommended adapter path. They
-prove one callback winner for concurrent consumption and cover replay, browser
-mismatch, expiry, missing state, tampered records, link context, and adversarial
-destination normalization. No universal cross-dialect Better Auth adapter
-atomicity claim is made.
+Tests use the Better Auth storage adapter with real SQLite, including two
+independent Better Auth instances and database connections sharing a file. Tests
+also exercise storage through real endpoint contexts. They prove one callback
+winner for concurrent consumption and cover replay, browser mismatch, expiry,
+missing state, tampered records, link context, and adversarial destination
+normalization. No universal cross-dialect Better Auth adapter atomicity claim is
+made.

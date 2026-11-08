@@ -24,19 +24,18 @@ Run from the repository root against the release commit:
 - [ ] Confirm host Better Auth migrations include both plugin-owned models:
       `discourseConnectState` and `discourseIdentityGuard`; apply the generated
       migration before serving plugin endpoints.
-- [ ] Confirm the default Better Auth state adapter is backed by atomic
+- [ ] Confirm the Better Auth state adapter is backed by atomic
       `consumeOne` semantics. The compatibility evidence is against the pinned
       Better Auth SQLite test adapter only; do not generalize it to all adapters.
-- [ ] If using optional `createSqliteTransactionStateStorage`, verify durable
-      shared storage and Node `node:sqlite` availability (Node.js 22.13+; tested
-      on Node 24). Do not use per-worker or in-memory production databases.
+- [ ] Verify all instances use the same durable host database for transaction
+      state and identity guards. Do not use per-worker or in-memory production
+      databases.
 
 The currently declared support floor is Node.js `>=24`. Record the Node versions
-actually used for build, typecheck, tests, and package validation. The optional
-SQLite storage's underlying API is available from Node.js 22.13, but this package
-supports Node.js 24 and newer; older runtimes are not verified. Better Auth
-compatibility is pinned and tested at **1.7.18**; other Better Auth versions are
-not established as supported by the recorded integration evidence.
+actually used for build, typecheck, tests, and package validation. Older runtimes
+are not verified. Better Auth compatibility is pinned and tested at **1.7.18**;
+other Better Auth versions are not established as supported by the recorded
+integration evidence.
 
 ## Real Discourse setup (operator action required)
 
@@ -118,8 +117,8 @@ currently pending.
 ## Compatibility evidence versus future gates
 
 The repository records Better Auth **1.7.18** integration tests using its real
-SQLite test adapter, and optional Node SQLite state-store tests (Node 24). These
-are automated compatibility evidence, not a real Discourse run, not evidence
+SQLite adapter, including state consumption across two connections (Node 24).
+These are automated compatibility evidence, not a real Discourse run, not evidence
 for every database adapter/dialect, and not proof for other Better Auth or Node
 versions. Capture actual CI results and the real-instance operator evidence for
 each release. Until then, retain the **PENDING** status above and do not claim
