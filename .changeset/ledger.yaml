@@ -1,0 +1,4 @@
+better-auth-discourse@0.2.0:
+  dir: ""
+  intents:
+    - spicy-worms-join
